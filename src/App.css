@@ -1,38 +1,43 @@
+html,
+body {
+    height: 100%;
+    margin: 0
+}
+
+#root {
+    height: 100%
+}
+
 .App {
-  text-align: center;
+    display: flex;
+    flex-flow: column;
+    height: 100%;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.Design {
+    flex: 0 1 240px;
+    display: flex;
+    flex-flow: row;
+    height: 240px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.Controls {
+    flex: 0 1 auto;
+    background-color: #fdd;
+    overflow: auto;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+.Components {
+    flex: 1 1 auto;
+    background-color: #dfd;
+    overflow: auto;
 }
 
-.App-link {
-  color: #61dafb;
+.Visualization {
+    flex: 1 0 auto;
+    background-color: #ddf;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+input[type="file"] {
+    display: none;
 }
