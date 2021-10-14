@@ -2,11 +2,97 @@ import './App.css';
 import React from 'react';
 
 class Visualization extends React.Component {
+    drawFin(component, startX, finSet, angle) {
+        let xRootTrail = startX + component.length - finSet.positionFromBottom;
+        let yRootTrail = -1.0 * component.diameter / 2.0 * Math.cos(angle);
+        let xRootLead = xRootTrail - finSet.rootChord;
+        let yRootLead = yRootTrail;
+        let xTipLead = xRootLead + finSet.sweep;
+        let yTipLead = yRootLead - finSet.semiSpan * Math.cos(angle);
+        let xTipTrail = xTipLead + finSet.tipChord;
+        let yTipTrail = yTipLead;
+        let z = Math.sin(angle);
+        return (
+            <polygon className="part" points={xRootTrail+","+yRootTrail+" "+xRootLead+","+yRootLead+" "+xTipLead+","+yTipLead+" "+xTipTrail+","+yTipTrail} z={z} />
+        )
+    }
+
+    drawBodytube(component, startX) {
+        let x = startX;
+        let y = -1.0 * component.diameter / 2.0;
+        let width = component.length;
+        let height = component.diameter;
+        let finSetVisualizations = [];
+        if(component.finSets.length > 0) {
+            for(let finSet of component.finSets) {
+                let numberOfFinsToDraw = Math.floor(finSet.number / 2.0) + 1;
+                let angleBetweenFins = 2.0 * Math.PI / finSet.number;
+                for(let i = 0; i < numberOfFinsToDraw; i++) {
+                    finSetVisualizations.push(this.drawFin(component, startX, finSet, i * angleBetweenFins));
+                }
+            }
+        }
+        return (
+            <g z="0">
+                <rect className="part" x={x} y={y} width={width} height={height} z="0" />
+                {finSetVisualizations.sort((a, b) => Number(a.props.z) - Number(b.props.z))}
+            </g>
+        )
+    }
+
+    drawNosecone(component, startX) {
+        let x0 = startX;
+        let y0 = 0;
+        let x1 = startX + component.length;
+        let y1 = -1.0 * component.diameter / 2.0;
+        let x2 = x1;
+        let y2 = y1 + component.diameter;
+        return (
+            <polygon className="part" points={x0+","+y0+" "+x1+","+y1+" "+x2+","+y2} z="-1" />
+        )
+    }
+
+    drawTransition(component, startX) {
+        let x0 = startX;
+        let y0 = 1.0 * component.frontDiameter / 2.0;
+        let x1 = startX;
+        let y1 = y0 - component.frontDiameter;
+        let x2 = startX + component.length;
+        let y2 = -1.0 * component.aftDiameter / 2.0;
+        let x3 = x2;
+        let y3 = y2 + component.aftDiameter;
+        return (
+            <polygon className="part" points={x0+","+y0+" "+x1+","+y1+" "+x2+","+y2+" "+x3+","+y3} z="-1" />
+        )
+    }
+
+    drawComponent(component, startX) {
+        if(component.type == "Bodytube") {
+            return this.drawBodytube(component, startX);
+        } else if(component.type == "Nosecone") {
+            return this.drawNosecone(component, startX);
+        } else if(component.type == "Transition") {
+            return this.drawTransition(component, startX);
+        }
+    }
+
+    drawComponents(componentList) {
+        let currentX = 0;
+        let componentVisualization = [];
+        for(let component of componentList) {
+            componentVisualization.push(this.drawComponent(component, currentX));
+            currentX += component.length;
+        }
+        return componentVisualization.sort((a, b) => Number(a.props.z) - Number(b.props.z));
+    }
+
     render() {
         return (
             <div className="Visualization">
-                <h1>Visualization</h1>
                 <p>Barrowman: {this.props.value.stabilityMargin}</p>
+                <svg id="visualization" viewBox="-10 -200 1020 400" preserveAspectRatio="xMidYMid meet">{
+                    this.drawComponents(this.props.value.components)
+                }</svg>
             </div>
         );
     }
@@ -20,7 +106,10 @@ class Components extends React.Component {
                     {this.props.value.map(component => {
                         switch(component.type) {
                             case "Bodytube":
-                                return <Bodytube key={component.key} value={component} 
+                                return <Bodytube key={component.key} 
+                                        selected={this.props.selected}
+                                        selectComponent={this.props.selectComponent}
+                                        value={component} 
                                         addFinSet={this.props.addFinSet}
                                         removeComponent={this.props.removeComponent}
                                         changeLength={this.props.changeLength} 
@@ -32,13 +121,19 @@ class Components extends React.Component {
                                         changePosition={this.props.changePosition}
                                     />
                             case "Nosecone":
-                                return <Nosecone key={component.key} value={component} 
+                                return <Nosecone key={component.key} 
+                                        selected={this.props.selected == component.key ? this.props.selected : null}
+                                        selectComponent={this.props.selectComponent}
+                                        value={component} 
                                         removeComponent={this.props.removeComponent}
                                         changeLength={this.props.changeLength} 
                                         changeDiameter={this.props.changeDiameter}
                                     />
                             case "Transition":
-                                return <Transition key={component.key} value={component} 
+                                return <Transition key={component.key} 
+                                        selected={this.props.selected == component.key ? this.props.selected : null}
+                                        selectComponent={this.props.selectComponent}
+                                        value={component} 
                                         removeComponent={this.props.removeComponent}
                                         changeLength={this.props.changeLength} 
                                         changeAftDiameter={this.props.changeAftDiameter}/>
@@ -47,7 +142,10 @@ class Components extends React.Component {
                         }
                     })}
                 </ul>
-                <button onClick={this.props.addBodyTubeAfter}>Add body tube after selection</button> &#x2001; <button onClick={this.props.addTransitionAfter}>Add transition after selection</button>
+                <p>
+                    <button onClick={this.props.addBodyTubeAfter}>Add body tube after selection</button> &#x2001; 
+                    <button onClick={this.props.addTransitionAfter}>Add transition after selection</button>
+                </p>
             </div>
         );
     }
@@ -56,7 +154,11 @@ class Components extends React.Component {
 class Nosecone extends React.Component {
     render() {
         return (
-            <li componentkey={this.props.value.key}><input type="radio" name="component" id={"component" + this.props.value.key} value={this.props.value.key} />{this.props.value.type} &#x2001;
+            <li componentkey={this.props.value.key} 
+                className={this.props.selected ? "selected" : null}
+                onClick={this.props.selectComponent}
+            >
+                {this.props.value.type} &#x2001;
                 Diam. <input size="2" value={this.props.value.diameter} onChange={this.props.changeDiameter} /> &#x2001;
                 Length <input size="2" value={this.props.value.length} onChange={this.props.changeLength} /> &#x2001;
             </li>
@@ -69,13 +171,19 @@ class Bodytube extends React.Component {
         const hasFinSets = this.props.value.finSets.length > 0;
 
         return (
-            <li componentkey={this.props.value.key}><input type="radio" name="component" id={"component" + this.props.value.key} value={this.props.value.key} />{this.props.value.type} &#x2001;
+            <li componentkey={this.props.value.key} 
+                className={this.props.selected == this.props.value.key ? "selected" : null}
+                onClick={this.props.selectComponent}
+            >
+                {this.props.value.type} &#x2001;
                 Diam. {this.props.value.diameter} &#x2001;
                 Length <input size="2" value={this.props.value.length} onChange={this.props.changeLength} /> &#x2001;
                 <button onClick={this.props.addFinSet}>add fin set</button> &#x2001;
                 <button onClick={this.props.removeComponent}>remove</button>
                 {hasFinSets &&
                     <FinSetList value={this.props.value.finSets}
+                        selected={this.props.selected}
+                        selectComponent={this.props.selectComponent}
                         removeComponent={this.props.removeComponent}
                         changeRootChord={this.props.changeRootChord}
                         changeTipChord={this.props.changeTipChord}
@@ -93,7 +201,11 @@ class Bodytube extends React.Component {
 class Transition extends React.Component {
     render() {
         return (
-            <li componentkey={this.props.value.key}><input type="radio" name="component" id={"component" + this.props.value.key} value={this.props.value.key} />{this.props.value.type} &#x2001;
+            <li componentkey={this.props.value.key} 
+                className={this.props.selected ? "selected" : null}
+                onClick={this.props.selectComponent}
+            >
+                {this.props.value.type} &#x2001;
                 Front diam. {this.props.value.frontDiameter} &#x2001;
                 Aft diam. <input size="2" value={this.props.value.aftDiameter} onChange={this.props.changeAftDiameter} /> &#x2001;
                 Length <input size="2" value={this.props.value.length} onChange={this.props.changeLength} /> &#x2001;
@@ -109,6 +221,8 @@ class FinSetList extends React.Component {
             <ul>
                 {this.props.value.map(finSet => {
                     return <FinSet key={finSet.key} value={finSet}
+                        selected={this.props.selected == finSet.key ? this.props.selected : null}
+                        selectComponent={this.props.selectComponent}
                         removeComponent={this.props.removeComponent}
                         changeRootChord={this.props.changeRootChord}
                         changeTipChord={this.props.changeTipChord}
@@ -126,7 +240,11 @@ class FinSetList extends React.Component {
 class FinSet extends React.Component {
     render() {
         return (
-            <li componentkey={this.props.value.key}>Fin set &#x2001;
+            <li componentkey={this.props.value.key} 
+                className={this.props.selected ? "selected" : ""}
+                onClick={this.props.selectComponent}
+            >
+                Fin set &#x2001;
                 Root <input size="2" value={this.props.value.rootChord} onChange={this.props.changeRootChord} /> &#x2001;
                 Tip <input size="2" value={this.props.value.tipChord} onChange={this.props.changeTipChord} /> &#x2001;
                 Semi-span <input size="2" value={this.props.value.semiSpan} onChange={this.props.changeSemiSpan} /> &#x2001;
@@ -166,6 +284,7 @@ class App extends React.Component {
                 },
                 { "key": 5, "type": "Transition", "length": 50, frontDiameter: 40, aftDiameter: 25 },
             ],
+            "selectedComponent" : null,
         };
     }
 
@@ -246,7 +365,16 @@ class App extends React.Component {
         const componentKey = event.target.parentElement.attributes.componentkey.value;
         let components = this.state.components.map(component => {
             if(component.key == componentKey) {
-                return Object.assign(component, { [dimension]: event.target.value });
+                return Object.assign(component, { [dimension]: Number(event.target.value) });
+            } else if(component.type == "Bodytube") {
+                let finSets = component.finSets.map(finSet => {
+                    if(finSet.key == componentKey) {
+                        return Object.assign(finSet, { [dimension]: Number(event.target.value) });
+                    } else {
+                        return finSet;
+                    }
+                });
+                return Object.assign(component, { finSets: finSets });
             } else {
                 return component;
             }
@@ -266,41 +394,35 @@ class App extends React.Component {
     }
 
     addBodyTubeAfter(event) {
-        let componentSelectors = document.querySelectorAll('input[name="component"]');
-        let selectedComponentKey = 0;
-        for(let component of componentSelectors) {
-            if(component.checked) {
-                selectedComponentKey = component.value;
-                break;
-            }
-        }
-        let selectedComponentIndex = this.state.components.findIndex(component => component.key == selectedComponentKey);
+        if(!this.state.selectedComponent) { alert('No component selected.'); return; }
+        let selectedComponentIndex = this.state.components.findIndex(component => component.key == this.state.selectedComponent);
+        if(selectedComponentIndex == -1) { alert('Cannot insert a bodytube after this component.'); return; }
         let components = this.state.components.slice(0);
         components.splice(selectedComponentIndex + 1, 0,
             { "key": this.getHighestComponentKey() + 1, "type": "Bodytube", "length": 500, "diameter": 25,
                 "finSets": [],
             }
         );
-        console.log("Inserted after " + selectedComponentIndex + " (key: " + selectedComponentKey + "):\n" + JSON.stringify(components));
         this.setState({ components: components }, this.verifyDiameters);
     }
 
     addTransitionAfter(event) {
-        let componentSelectors = document.querySelectorAll('input[name="component"]');
-        let selectedComponentKey = 0;
-        for(let component of componentSelectors) {
-            if(component.checked) {
-                selectedComponentKey = component.value;
-                break;
-            }
-        }
-        let selectedComponentIndex = this.state.components.findIndex(component => component.key == selectedComponentKey);
+        if(!this.state.selectedComponent) { alert('No component selected.'); return; }
+        let selectedComponentIndex = this.state.components.findIndex(component => component.key == this.state.selectedComponent);
+        if(selectedComponentIndex == -1) { alert('Cannot insert a transition after this component.'); return; }
         let components = this.state.components.slice(0);
         components.splice(selectedComponentIndex + 1, 0,
             { "key": this.getHighestComponentKey() + 1, "type": "Transition", "length": 40, frontDiameter: 25, aftDiameter: 40 }
         );
-        console.log("Inserted after " + selectedComponentIndex + ":\n" + JSON.stringify(components));
         this.setState({ components: components }, this.verifyDiameters);
+    }
+
+    selectComponent(event) {
+        // this check at the beginning will catch a click event on a component that has just been deleted
+        let componentKey = event.target.attributes.componentkey ? event.target.attributes.componentkey.value : null;
+        if(!componentKey) { return; }
+        let deselect = componentKey == this.state.selectedComponent;
+        this.setState({ selectedComponent: deselect ? null : componentKey });
     }
 
     removeComponent(event) {
@@ -323,13 +445,15 @@ class App extends React.Component {
                 <div className="Design">
                     <div className="Controls">
                         <h1>Design</h1>
-                        <Name value={this.state.name} onChange={(event) => this.updateName(event)}/><br/>
-                        <input type="button" id="load" value="Load" onClick={() => {document.getElementById('file').click();}}/>
-                        <input type="file" id="file" name="file" onChange={(event) => this.loadConfiguration(event)}/><br/>
-                        <button onClick={() => this.saveConfiguration()}>Save</button><br/>
-                        <button onClick={() => this.calcDisplayStability()}>Calculate &amp; Display Stability</button>
+                        <p><Name value={this.state.name} onChange={(event) => this.updateName(event)}/></p>
+                        <p><button id="load" onClick={() => {document.getElementById('file').click();}}>Load design from file</button>
+                        <input type="file" id="file" name="file" onChange={(event) => this.loadConfiguration(event)}/></p>
+                        <p><button onClick={() => this.saveConfiguration()}>Save design to file</button></p>
+                        <p><button onClick={() => this.calcDisplayStability()}>Calculate stability</button></p>
                     </div>
-                    <Components value={this.state.components}
+                    <Components value={this.state.components} 
+                        selected={this.state.selectedComponent}
+                        selectComponent={(event) => this.selectComponent(event)}
                         changeDiameter={(event) => this.changeDimension("diameter", event)}
                         changeLength={(event) => this.changeDimension("length", event)}
                         changeAftDiameter={(event) => this.changeDimension("aftDiameter", event)}

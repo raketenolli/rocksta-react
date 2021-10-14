@@ -8,6 +8,12 @@ body {
     height: 100%
 }
 
+#visualization {
+    width: 100%;
+    height: auto;
+    background-color: #d8f2ff;
+}
+
 .App {
     display: flex;
     flex-flow: column;
@@ -15,29 +21,68 @@ body {
 }
 
 .Design {
-    flex: 0 1 240px;
+    flex: 0 1 260px;
     display: flex;
     flex-flow: row;
-    height: 240px;
+    height: 260px;
 }
 
 .Controls {
     flex: 0 1 auto;
-    background-color: #fdd;
+    background-color: #ddd;
     overflow: auto;
+    margin-right: 2px;
+    padding: 0em 1em;
 }
 
 .Components {
     flex: 1 1 auto;
-    background-color: #dfd;
+    background-color: #ddd;
     overflow: auto;
+    padding: 1em;
 }
 
 .Visualization {
     flex: 1 0 auto;
-    background-color: #ddf;
+    background-color: #fff;
+    padding: 0em 1em;
 }
 
 input[type="file"] {
     display: none;
+}
+
+li {
+    list-style-type: none;
+    margin: 3px 0px;
+    border-width: 1px 0px;
+    border-style: solid #888;
+}
+
+li.selected {
+    background-color: #07e;
+    color: #fff;
+}
+
+.Controls button {
+    width: 150px;
+}
+
+h1 {
+    margin-top: 0.5em;
+}
+
+ul {
+    padding: 0em;
+    margin: 0em;
+}
+
+li > ul {
+    padding-left: 2em;
+}
+
+.part {
+    fill: #ddd;
+    stroke-width: 2px;
+    stroke: #000;
 }
