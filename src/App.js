@@ -2,7 +2,8 @@ import './App.css';
 import React from 'react';
 
 class Visualization extends React.Component {
-    drawFin(component, startX, finSet, angle) {
+    drawFin(component, startX, finSet, index, angleBetweenFins) {
+        let angle = index * angleBetweenFins;
         let xRootTrail = startX + component.length - finSet.positionFromBottom;
         let yRootTrail = -1.0 * component.diameter / 2.0 * Math.cos(angle);
         let xRootLead = xRootTrail - finSet.rootChord;
@@ -13,7 +14,7 @@ class Visualization extends React.Component {
         let yTipTrail = yTipLead;
         let z = Math.sin(angle);
         return (
-            <polygon className="part" points={xRootTrail+","+yRootTrail+" "+xRootLead+","+yRootLead+" "+xTipLead+","+yTipLead+" "+xTipTrail+","+yTipTrail} z={z} />
+            <polygon key={component.key + "_" + index} className="part" points={xRootTrail+","+yRootTrail+" "+xRootLead+","+yRootLead+" "+xTipLead+","+yTipLead+" "+xTipTrail+","+yTipTrail} z={z} />
         )
     }
 
@@ -28,13 +29,13 @@ class Visualization extends React.Component {
                 let numberOfFinsToDraw = Math.floor(finSet.number / 2.0) + 1;
                 let angleBetweenFins = 2.0 * Math.PI / finSet.number;
                 for(let i = 0; i < numberOfFinsToDraw; i++) {
-                    finSetVisualizations.push(this.drawFin(component, startX, finSet, i * angleBetweenFins));
+                    finSetVisualizations.push(this.drawFin(component, startX, finSet, i, angleBetweenFins));
                 }
             }
         }
         return (
-            <g z="0">
-                <rect className="part" x={x} y={y} width={width} height={height} z="0" />
+            <g key={"g" + component.key} z="0">
+                <rect key={component.key} className="part" x={x} y={y} width={width} height={height} z="0" />
                 {finSetVisualizations.sort((a, b) => Number(a.props.z) - Number(b.props.z))}
             </g>
         )
@@ -48,7 +49,7 @@ class Visualization extends React.Component {
         let x2 = x1;
         let y2 = y1 + component.diameter;
         return (
-            <polygon className="part" points={x0+","+y0+" "+x1+","+y1+" "+x2+","+y2} z="-1" />
+            <polygon key={component.key} className="part" points={x0+","+y0+" "+x1+","+y1+" "+x2+","+y2} z="-1" />
         )
     }
 
@@ -62,16 +63,16 @@ class Visualization extends React.Component {
         let x3 = x2;
         let y3 = y2 + component.aftDiameter;
         return (
-            <polygon className="part" points={x0+","+y0+" "+x1+","+y1+" "+x2+","+y2+" "+x3+","+y3} z="-1" />
+            <polygon key={component.key} className="part" points={x0+","+y0+" "+x1+","+y1+" "+x2+","+y2+" "+x3+","+y3} z="-1" />
         )
     }
 
     drawComponent(component, startX) {
-        if(component.type == "Bodytube") {
+        if(component.type === "Bodytube") {
             return this.drawBodytube(component, startX);
-        } else if(component.type == "Nosecone") {
+        } else if(component.type === "Nosecone") {
             return this.drawNosecone(component, startX);
-        } else if(component.type == "Transition") {
+        } else if(component.type === "Transition") {
             return this.drawTransition(component, startX);
         }
     }
@@ -87,10 +88,17 @@ class Visualization extends React.Component {
     }
 
     render() {
+        let xTopLeft = -10;
+        let yTopLeft = -1 * this.props.value.width / 2 - 10;
+        let width = this.props.value.totalLength + 20;
+        let height = this.props.value.width + 20;
+
         return (
             <div className="Visualization">
+                <p>Total length (incl. fins): {this.props.value.totalLength.toFixed(1)}, 
+                Largest diameter or span: {this.props.value.width.toFixed(1)}</p>
                 <p>Barrowman: {this.props.value.stabilityMargin}</p>
-                <svg id="visualization" viewBox="-10 -200 1020 400" preserveAspectRatio="xMidYMid meet">{
+                <svg id="visualization" viewBox={xTopLeft+" "+yTopLeft+" "+width+" "+height} preserveAspectRatio="xMidYMid meet">{
                     this.drawComponents(this.props.value.components)
                 }</svg>
             </div>
@@ -122,7 +130,7 @@ class Components extends React.Component {
                                     />
                             case "Nosecone":
                                 return <Nosecone key={component.key} 
-                                        selected={this.props.selected == component.key ? this.props.selected : null}
+                                        selected={this.props.selected}
                                         selectComponent={this.props.selectComponent}
                                         value={component} 
                                         removeComponent={this.props.removeComponent}
@@ -131,14 +139,15 @@ class Components extends React.Component {
                                     />
                             case "Transition":
                                 return <Transition key={component.key} 
-                                        selected={this.props.selected == component.key ? this.props.selected : null}
+                                        selected={this.props.selected}
                                         selectComponent={this.props.selectComponent}
                                         value={component} 
                                         removeComponent={this.props.removeComponent}
                                         changeLength={this.props.changeLength} 
-                                        changeAftDiameter={this.props.changeAftDiameter}/>
+                                        changeAftDiameter={this.props.changeAftDiameter}
+                                    />
                             default:
-                                return;
+                                return <p></p>
                         }
                     })}
                 </ul>
@@ -155,7 +164,7 @@ class Nosecone extends React.Component {
     render() {
         return (
             <li componentkey={this.props.value.key} 
-                className={this.props.selected ? "selected" : null}
+                className={this.props.selected === this.props.value.key ? "selected" : null}
                 onClick={this.props.selectComponent}
             >
                 {this.props.value.type} &#x2001;
@@ -172,7 +181,7 @@ class Bodytube extends React.Component {
 
         return (
             <li componentkey={this.props.value.key} 
-                className={this.props.selected == this.props.value.key ? "selected" : null}
+                className={this.props.selected === this.props.value.key ? "selected" : null}
                 onClick={this.props.selectComponent}
             >
                 {this.props.value.type} &#x2001;
@@ -202,7 +211,7 @@ class Transition extends React.Component {
     render() {
         return (
             <li componentkey={this.props.value.key} 
-                className={this.props.selected ? "selected" : null}
+                className={this.props.selected === this.props.value.key ? "selected" : null}
                 onClick={this.props.selectComponent}
             >
                 {this.props.value.type} &#x2001;
@@ -221,7 +230,7 @@ class FinSetList extends React.Component {
             <ul>
                 {this.props.value.map(finSet => {
                     return <FinSet key={finSet.key} value={finSet}
-                        selected={this.props.selected == finSet.key ? this.props.selected : null}
+                        selected={this.props.selected === finSet.key ? this.props.selected : null}
                         selectComponent={this.props.selectComponent}
                         removeComponent={this.props.removeComponent}
                         changeRootChord={this.props.changeRootChord}
@@ -271,6 +280,8 @@ class App extends React.Component {
         this.state = {
             "name": "",
             "stabilityMargin": "n/a",
+            "width": 140,
+            "totalLength": 990,
             "components": [
                 { "key": 1, "type": "Nosecone", "length": 100, "diameter": 25 },
                 { "key": 2, "type": "Bodytube", "length": 500, "diameter": 25,
@@ -330,7 +341,13 @@ class App extends React.Component {
         });
     }
 
-    verifyDiameters() {
+    updateDimensions() {
+        this.updateDiameters();
+        this.updateWidth();
+        this.updateTotalLength();
+    }
+
+    updateDiameters() {
         let currentDiameter = 0;
         let components = [];
         for (let component of this.state.components) {
@@ -349,10 +366,47 @@ class App extends React.Component {
         this.setState({ components: components });
     }
 
+    updateWidth() {
+        let currentMaxSpanOrDiameter = 0;
+        for (let component of this.state.components) {
+            if(component.type === "Nosecone") {
+                currentMaxSpanOrDiameter = Math.max(currentMaxSpanOrDiameter, component.diameter);
+            } else if(component.type === "Bodytube") {
+                for(let finSet of component.finSets) {
+                    currentMaxSpanOrDiameter = Math.max(currentMaxSpanOrDiameter, component.diameter + 2 * finSet.semiSpan);
+                }
+            } else if(component.type === "Transition") {
+                currentMaxSpanOrDiameter = Math.max(currentMaxSpanOrDiameter, component.aftDiameter);
+            }
+        }
+        this.setState({ width: currentMaxSpanOrDiameter });
+    }
+
+    updateTotalLength() {
+        let currentLength = 0;
+        let currentMaxLength = 0;
+        for (let component of this.state.components) {
+            currentLength += component.length;
+            currentMaxLength = Math.max(currentLength, currentMaxLength);
+            if(component.type === "Bodytube") {
+                for(let finSet of component.finSets) {
+                    // either 
+                    // - the end of bodytube, 
+                    // - the aft tip of tip chord, 
+                    // - the aft tip of root chord, or
+                    // - some previously calculated most rearward point
+                    // is the most rearward point of the rocket
+                    currentMaxLength = Math.max(currentLength, currentLength - finSet.positionFromBottom - finSet.rootChord + finSet.sweep + finSet.tipChord, currentLength - finSet.positionFromBottom, currentMaxLength); 
+                }
+            }
+        }
+        this.setState({ totalLength: currentMaxLength });
+    }
+
     getHighestComponentKey() {
         return this.state.components.reduce((max, component) => {
             let finMax = 0;
-            if(component.type == "Bodytube") {
+            if(component.type === "Bodytube") {
                 finMax = component.finSets.reduce((max, finSet) => {
                     return Math.max(max, finSet.key);
                 }, 0);
@@ -362,13 +416,13 @@ class App extends React.Component {
     }
 
     changeDimension(dimension, event) {
-        const componentKey = event.target.parentElement.attributes.componentkey.value;
+        const componentKey = Number(event.target.parentElement.attributes.componentkey.value);
         let components = this.state.components.map(component => {
-            if(component.key == componentKey) {
+            if(component.key === componentKey) {
                 return Object.assign(component, { [dimension]: Number(event.target.value) });
-            } else if(component.type == "Bodytube") {
+            } else if(component.type === "Bodytube") {
                 let finSets = component.finSets.map(finSet => {
-                    if(finSet.key == componentKey) {
+                    if(finSet.key === componentKey) {
                         return Object.assign(finSet, { [dimension]: Number(event.target.value) });
                     } else {
                         return finSet;
@@ -379,13 +433,13 @@ class App extends React.Component {
                 return component;
             }
         });
-        this.setState({ components: components }, this.verifyDiameters);
+        this.setState({ components: components }, this.updateDimensions);
     }
 
     addFinSet(event) {
-        let bodytubeKey = event.target.parentElement.attributes.componentkey.value;
+        let bodytubeKey = Number(event.target.parentElement.attributes.componentkey.value);
         let components = this.state.components.map(component => {
-            if(component.key == bodytubeKey) {
+            if(component.key === bodytubeKey) {
                 component.finSets.push({ "key": this.getHighestComponentKey() + 1, "rootChord": 50, "tipChord": 30, "semiSpan": 50, "sweep": 30, "number": 6, "positionFromBottom": 0 });
             }
             return component;
@@ -395,48 +449,48 @@ class App extends React.Component {
 
     addBodyTubeAfter(event) {
         if(!this.state.selectedComponent) { alert('No component selected.'); return; }
-        let selectedComponentIndex = this.state.components.findIndex(component => component.key == this.state.selectedComponent);
-        if(selectedComponentIndex == -1) { alert('Cannot insert a bodytube after this component.'); return; }
+        let selectedComponentIndex = this.state.components.findIndex(component => component.key === this.state.selectedComponent);
+        if(selectedComponentIndex === -1) { alert('Cannot insert a bodytube after this component.'); return; }
         let components = this.state.components.slice(0);
         components.splice(selectedComponentIndex + 1, 0,
             { "key": this.getHighestComponentKey() + 1, "type": "Bodytube", "length": 500, "diameter": 25,
                 "finSets": [],
             }
         );
-        this.setState({ components: components }, this.verifyDiameters);
+        this.setState({ components: components }, this.updateDimensions);
     }
 
     addTransitionAfter(event) {
         if(!this.state.selectedComponent) { alert('No component selected.'); return; }
-        let selectedComponentIndex = this.state.components.findIndex(component => component.key == this.state.selectedComponent);
-        if(selectedComponentIndex == -1) { alert('Cannot insert a transition after this component.'); return; }
+        let selectedComponentIndex = this.state.components.findIndex(component => component.key === this.state.selectedComponent);
+        if(selectedComponentIndex === -1) { alert('Cannot insert a transition after this component.'); return; }
         let components = this.state.components.slice(0);
         components.splice(selectedComponentIndex + 1, 0,
             { "key": this.getHighestComponentKey() + 1, "type": "Transition", "length": 40, frontDiameter: 25, aftDiameter: 40 }
         );
-        this.setState({ components: components }, this.verifyDiameters);
+        this.setState({ components: components }, this.updateDimensions);
     }
 
     selectComponent(event) {
         // this check at the beginning will catch a click event on a component that has just been deleted
-        let componentKey = event.target.attributes.componentkey ? event.target.attributes.componentkey.value : null;
+        let componentKey = event.target.attributes.componentkey ? Number(event.target.attributes.componentkey.value) : null;
         if(!componentKey) { return; }
-        let deselect = componentKey == this.state.selectedComponent;
+        let deselect = componentKey === this.state.selectedComponent;
         this.setState({ selectedComponent: deselect ? null : componentKey });
     }
 
     removeComponent(event) {
-        let componentKey = event.target.parentElement.attributes.componentkey.value;
-        let components = this.state.components.filter(component => { return component.key != componentKey});
+        let componentKey = Number(event.target.parentElement.attributes.componentkey.value);
+        let components = this.state.components.filter(component => { return component.key !== componentKey});
         components = components.map(component => {
-            if(component.type == "Bodytube") {
-                component.finSets = component.finSets.filter(finSet => { return finSet.key != componentKey});
+            if(component.type === "Bodytube") {
+                component.finSets = component.finSets.filter(finSet => { return finSet.key !== componentKey});
                 return component;
             } else {
                 return component;
             }
         });
-        this.setState({ components: components }, this.verifyDiameters);
+        this.setState({ components: components }, this.updateDimensions);
     }
 
     render() {

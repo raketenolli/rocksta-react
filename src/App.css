@@ -84,5 +84,6 @@ li > ul {
 .part {
     fill: #ddd;
     stroke-width: 2px;
+    vector-effect: non-scaling-stroke;
     stroke: #000;
 }
